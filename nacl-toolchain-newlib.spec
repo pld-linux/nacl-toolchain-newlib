@@ -3,9 +3,11 @@
 #   rev 6757 matches pepper_15, r1239
 #   rev 6941 matches pepper_16, r1344
 # - libdir mixed up for 32/64 bit. do we care? upstream confused about it too
+#   https://code.google.com/p/nativeclient/issues/detail?id=1975
 # - /bin/sh in some wrappers:
 #   cat i686-nacl-as
 #   #!/bin/bash
+# - messed up install dirs (two gcc dirs)
 #%define		nacl_revision	6757
 #%define		nacl_revision	6869
 %define		nacl_revision	6941
@@ -15,9 +17,9 @@
 Summary:	Native Client newlib-based toolchain (only for compiling IRT)
 Name:		nacl-toolchain-newlib
 Version:	0.%{nacl_revision}
-Release:	0.3
+Release:	0.5
 License:	BSD (NaCL), GPL v3/LGPL v3 (binutils), GPL v3+ (gcc), GPL v2(newlib)
-Group:		Applications
+Group:		Development/Languages
 Source0:	http://gsdview.appspot.com/nativeclient-archive2/x86_toolchain/r%{nacl_revision}/nacltoolchain-buildscripts-r%{nacl_revision}.tar.gz
 # Source0-md5:	884acc20fb43fd6f399e4bb693bf5750
 Source1:	ftp://sources.redhat.com/pub/newlib/newlib-%{newlib_ver}.tar.gz
@@ -57,15 +59,21 @@ ExclusiveArch:	%{x8664} %{ix86}
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %define		target		x86_64-nacl
+%define		target32	i686-nacl
 %define		arch		%{_prefix}/%{target}-newlib
 %define		_datadir	%{arch}/share
-%define		_mandir		%{_datadir}/man
+%define		_mandir		%{arch}/man
 %define		_infodir	%{_datadir}/info
 %define		_includedir	%{arch}/%{target}/include
+%define		_libdir		%{arch}/%{target}/lib
 %define		_libexecdir	%{arch}/libexec
 
-%define     gccarch     %{_libexecdir}/gcc/%{target}
-%define     gcclib      %{gccarch}/%{gcc_ver}
+%define     gccarch		%{_libexecdir}/gcc/%{target}
+%define     gcclib		%{gccarch}/%{gcc_ver}
+%define     gcclib2		%{arch}/lib/gcc/%{target}/%{gcc_ver}
+
+%define		_noautostrip	.*%{arch}/.*\.a
+%define		_noautochrpath	.*%{arch}/.*\.a
 
 %description
 Native Client newlib-based toolchain (only for compiling IRT).
@@ -92,6 +100,36 @@ rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT%{arch}
 cp -a out/* $RPM_BUILD_ROOT%{arch}
 
+## gcc
+# move fixed includes to proper place
+cp -p $RPM_BUILD_ROOT%{gcclib2}/include-fixed/*.h $RPM_BUILD_ROOT%{gcclib2}/include
+
+# don't want it here
+%{__rm} $RPM_BUILD_ROOT%{_libdir}/libiberty.a
+%{__rm} $RPM_BUILD_ROOT%{_libdir}32/libiberty.a
+%{__rm} -r $RPM_BUILD_ROOT%{_infodir}
+%{__rm} $RPM_BUILD_ROOT%{_mandir}/man7/fsf-funding.7
+%{__rm} $RPM_BUILD_ROOT%{_mandir}/man7/gfdl.7
+%{__rm} $RPM_BUILD_ROOT%{_mandir}/man7/gpl.7
+%{__rm} $RPM_BUILD_ROOT%{_datadir}/locale/*/LC_MESSAGES/{gcc,cpplib}.mo
+%{__rm} -r $RPM_BUILD_ROOT%{gcclib2}/include-fixed
+%{__rm} -r $RPM_BUILD_ROOT%{gcclib2}/install-tools
+
+%if 0%{!?debug:1} && 0
+# strip target libraries
+export PATH=$PATH:$(pwd)/out/bin
+
+# strip target libraries
+%{target}-strip --strip-debug --remove-section=.note --remove-section=.comment \
+	$RPM_BUILD_ROOT%dir %{arch}/%{target}/lib/*.a \
+	$RPM_BUILD_ROOT%{arch}/%{target}/lib/*.a
+
+%{target32}-strip --strip-debug --remove-section=.note --remove-section=.comment \
+	$RPM_BUILD_ROOT%dir %{arch}/%{target}/lib/32/*.a \
+	$RPM_BUILD_ROOT%{arch}/%{target}/lib32/*.a
+%endif
+
+# general cleanup
 %{__rm} $RPM_BUILD_ROOT%{arch}/COPYING*
 rm -f $RPM_BUILD_ROOT%{_infodir}/dir
 
@@ -103,6 +141,7 @@ rm -rf $RPM_BUILD_ROOT%{_mandir}
 rm -rf $RPM_BUILD_ROOT%{_infodir}
 rm -rf $RPM_BUILD_ROOT%{arch}/info
 rm -rf $RPM_BUILD_ROOT%{arch}/man
+rm -rf $RPM_BUILD_ROOT%{arch}/share/man
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -113,7 +152,8 @@ rm -rf $RPM_BUILD_ROOT
 
 # binutils
 %dir %{arch}/bin
-%attr(755,root,root) %{arch}/bin/*
+%attr(755,root,root) %{arch}/bin/%{target}-*
+%attr(755,root,root) %{arch}/bin/%{target32}-*
 
 # libc
 %dir %{_datadir}
@@ -122,8 +162,8 @@ rm -rf $RPM_BUILD_ROOT
 # gcc
 %dir %{arch}/lib
 %dir %{arch}/lib/gcc
-%dir %{arch}/lib/gcc/x86_64-nacl
-%{arch}/lib/gcc/x86_64-nacl/%{gcc_ver}
+%dir %{arch}/lib/gcc/%{target}
+%{arch}/lib/gcc/%{target}/%{gcc_ver}
 
 %dir %{_libexecdir}
 %dir %{_libexecdir}/gcc
@@ -174,7 +214,7 @@ rm -rf $RPM_BUILD_ROOT
 %{arch}/%{target}/lib/libc.a
 %{arch}/%{target}/lib/libcrt_common.a
 %{arch}/%{target}/lib/libg.a
-%{arch}/%{target}/lib/libiberty.a
+#%{arch}/%{target}/lib/libiberty.a
 %{arch}/%{target}/lib/libm.a
 %{arch}/%{target}/lib/libobjc.a
 %{arch}/%{target}/lib/libstdc++.a
@@ -185,7 +225,7 @@ rm -rf $RPM_BUILD_ROOT
 %{arch}/%{target}/lib32/libc.a
 %{arch}/%{target}/lib32/libcrt_common.a
 %{arch}/%{target}/lib32/libg.a
-%{arch}/%{target}/lib32/libiberty.a
+#%{arch}/%{target}/lib32/libiberty.a
 %{arch}/%{target}/lib32/libm.a
 %{arch}/%{target}/lib32/libobjc.a
 %{arch}/%{target}/lib32/libstdc++.a
