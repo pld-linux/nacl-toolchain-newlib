@@ -8,9 +8,7 @@
 #   cat i686-nacl-as
 #   #!/bin/bash
 # - messed up install dirs (two gcc dirs)
-#%define		nacl_revision	6757
-#%define		nacl_revision	6869
-%define		nacl_revision	6941
+%define		nacl_revision	8034
 %define		binutils_ver	2.20.1
 %define		gcc_ver			4.4.3
 %define		newlib_ver		1.18.0
@@ -21,7 +19,7 @@ Release:	0.5
 License:	BSD (NaCL), GPL v3/LGPL v3 (binutils), GPL v3+ (gcc), GPL v2(newlib)
 Group:		Development/Languages
 Source0:	http://gsdview.appspot.com/nativeclient-archive2/x86_toolchain/r%{nacl_revision}/nacltoolchain-buildscripts-r%{nacl_revision}.tar.gz
-# Source0-md5:	884acc20fb43fd6f399e4bb693bf5750
+# Source0-md5:	985872dcaebb3dbb1d406910267efb06
 Source1:	ftp://sources.redhat.com/pub/newlib/newlib-%{newlib_ver}.tar.gz
 # Source1-md5:	3dae127d4aa659d72f8ea8c0ff2a7a20
 Source2:	http://ftp.gnu.org/gnu/binutils/binutils-%{binutils_ver}.tar.bz2
@@ -29,12 +27,12 @@ Source2:	http://ftp.gnu.org/gnu/binutils/binutils-%{binutils_ver}.tar.bz2
 Source3:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{gcc_ver}/gcc-%{gcc_ver}.tar.bz2
 # Source3-md5:	fe1ca818fc6d2caeffc9051fe67ff103
 Patch0:		http://gsdview.appspot.com/nativeclient-archive2/x86_toolchain/r%{nacl_revision}/naclbinutils-%{binutils_ver}-r%{nacl_revision}.patch.bz2
-# Patch0-md5:	dbcd40f49c9bd6624ed6b78056ab906b
+# Patch0-md5:	8473a33e00cea1d1de041b42753e3e02
 Patch1:		http://gsdview.appspot.com/nativeclient-archive2/x86_toolchain/r%{nacl_revision}/naclnewlib-%{newlib_ver}-r%{nacl_revision}.patch.bz2
-# Patch1-md5:	f433a45f24fc97f0b2ecc6ac1458b578
+# Patch1-md5:	faae6e8990cec9dde0fa8b371eb97c4e
 Patch2:		http://gsdview.appspot.com/nativeclient-archive2/x86_toolchain/r%{nacl_revision}/naclgcc-%{gcc_ver}-r%{nacl_revision}.patch.bz2
-# Patch2-md5:	581d51e531d50566cb30235611faeed6
-URL:		http://code.google.com/chrome/nativeclient/
+# Patch2-md5:	64509546a3d2133c5f26903da46a251a
+URL:		https://developers.google.com/native-client/
 BuildRequires:	binutils >= 2.15.94
 BuildRequires:	bison >= 1.875
 BuildRequires:	cloog-ppl-devel
@@ -75,6 +73,12 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 %define		_noautostrip	.*%{arch}/.*\.a
 %define		_noautochrpath	.*%{arch}/.*\.a
 
+# temporarily:
+#/usr/bin/ld: libbackend.a(graphite.o): undefined reference to symbol 'ppl_finalize'
+#/usr/bin/ld: note: 'ppl_finalize' is defined in DSO /usr/lib/libppl_c.so.4 so try adding it to the linker command line
+#define		filterout_ld	-Wl,--no-copy-dt-needed-entries -Wl,--as-needed
+#define		specldflags		-lppl_c
+
 %description
 Native Client newlib-based toolchain (only for compiling IRT).
 
@@ -92,6 +96,7 @@ cd SRC
 
 %build
 %{__make} build-with-newlib \
+	LDFLAGS="%{rpmldflags}" \
 	PREFIX="$(pwd)/out" \
 	CANNED_REVISION="yes"
 
