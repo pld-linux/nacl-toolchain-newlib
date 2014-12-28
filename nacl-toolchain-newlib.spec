@@ -37,7 +37,7 @@ BuildRequires:	binutils >= 2.15.94
 BuildRequires:	bison >= 1.875
 BuildRequires:	cloog-ppl-devel
 BuildRequires:	flex >= 2.5.4
-BuildRequires:	gettext-devel
+BuildRequires:	gettext-tools
 BuildRequires:	iconv
 BuildRequires:	libart_lgpl-devel >= 2.1
 BuildRequires:	libmpc-devel
