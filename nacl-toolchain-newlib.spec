@@ -90,9 +90,9 @@ mv newlib-%{newlib_ver} SRC/newlib
 mv gcc-%{gcc_ver} SRC/gcc
 
 cd SRC
-%patch0 -p0
-%patch1 -p0
-%patch2 -p0
+%patch -P0 -p0
+%patch -P1 -p0
+%patch -P2 -p0
 
 %build
 %{__make} build-with-newlib \
